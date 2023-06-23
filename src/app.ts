@@ -13,6 +13,7 @@ import {
 } from './parsers/daum.js'
 import { parsingNaver } from './parsers/naver.js'
 import { parsingYonhap } from './parsers/yonhap.js'
+import { removeComments } from './utils/article.js'
 
 interface ParserParam {
   page: Page
@@ -46,7 +47,7 @@ async function parse({ page, url }: ParserParam) {
   const { article, ...daumSummary } = await parsingDaum({ page, title })
 
   return [
-    { system: 'source', summary: article },
+    { system: 'source', summary: removeComments(article) },
     naverSummary,
     yonhapSummary,
     daumSummary,
@@ -70,7 +71,7 @@ async function parseAndSave(
   const sourceFilePath = `${SAVING_PATH}/sources/${topic}${index}.txt`
   const ifExists = await checkIfFileExists(sourceFilePath)
 
-  if (ifExists) return
+  // if (ifExists) return
 
   const summaries = await parse(parsingParams)
 
