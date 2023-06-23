@@ -1,5 +1,6 @@
 import type { Page } from 'puppeteer'
 
+import { existsSync } from 'fs'
 import { writeFile } from 'fs/promises'
 import Gauge from 'gauge'
 import PQueue from 'p-queue'
@@ -56,23 +57,36 @@ async function save({ filename, data }: { data: string; filename: string }) {
   await writeFile(filename, data)
 }
 
+const checkIfFileExists = (filename: string): Promise<boolean> =>
+  new Promise((resolve) => {
+    resolve(existsSync(filename))
+  })
+
 async function parseAndSave(
   params: ParserParam & { index: number; topic: string }
 ) {
   const { index, topic, ...parsingParams } = params
+
+  const sourceFilePath = `${SAVING_PATH}/sources/${topic}${index}.txt`
+  const ifExists = await checkIfFileExists(sourceFilePath)
+
+  if (ifExists) return
+
   const summaries = await parse(parsingParams)
 
   await Promise.all(
-    summaries.map(({ system, summary }) => {
+    summaries.map(async ({ system, summary }) => {
       if (!summary) {
         return
       }
 
-      save({
-        filename:
-          system === 'source'
-            ? `${SAVING_PATH}/sources/${topic}${index}.txt`
-            : `${SAVING_PATH}/summaries/${topic}${index}-${system}.txt`,
+      const filename =
+        system === 'source'
+          ? sourceFilePath
+          : `${SAVING_PATH}/summaries/${topic}${index}-${system}.txt`
+
+      await save({
+        filename,
         data: summary,
       })
     })
