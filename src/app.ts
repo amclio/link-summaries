@@ -5,8 +5,11 @@ import { writeFile } from 'fs/promises'
 import Gauge from 'gauge'
 import PQueue from 'p-queue'
 
+import type { Topic as NewsTopic } from './parsers/types.js'
+
 import { metadata } from '../configs.js'
 import { PuppeteerInstance } from './libs/puppeteer.js'
+import { parsingChatGPT } from './parsers/chatgpt.js'
 import {
   parsingDaum as parsingDaumWithoutUrl,
   searchArticle as searchDaumArticle,
@@ -14,6 +17,8 @@ import {
 import { parsingNaver } from './parsers/naver.js'
 import { parsingYonhap } from './parsers/yonhap.js'
 import { removeComments } from './utils/article.js'
+
+const SKIP_IF_FILE_EXISTS = false
 
 interface ParserParam {
   page: Page
@@ -33,7 +38,7 @@ async function parsingDaum({ title, page }: { page: Page; title: string }) {
   })
 }
 
-async function parse({ page, url }: ParserParam) {
+async function parse({ page, url, topic }: ParserParam & { topic: NewsTopic }) {
   const { originalArticleUrl, title, ...naverSummary } = await parsingNaver({
     url,
     page,
@@ -46,11 +51,14 @@ async function parse({ page, url }: ParserParam) {
 
   const { article, ...daumSummary } = await parsingDaum({ page, title })
 
+  const chatgptSummary = await parsingChatGPT({ article, topic })
+
   return [
     { system: 'source', summary: removeComments(article) },
     naverSummary,
     yonhapSummary,
     daumSummary,
+    chatgptSummary,
   ]
 }
 
@@ -64,16 +72,16 @@ const checkIfFileExists = (filename: string): Promise<boolean> =>
   })
 
 async function parseAndSave(
-  params: ParserParam & { index: number; topic: string }
+  params: ParserParam & { index: number; topic: NewsTopic }
 ) {
-  const { index, topic, ...parsingParams } = params
+  const { index, topic, page, url } = params
 
   const sourceFilePath = `${SAVING_PATH}/sources/${topic}${index}.txt`
   const ifExists = await checkIfFileExists(sourceFilePath)
 
-  // if (ifExists) return
+  if (ifExists && SKIP_IF_FILE_EXISTS) return
 
-  const summaries = await parse(parsingParams)
+  const summaries = await parse({ topic, page, url })
 
   await Promise.all(
     summaries.map(async ({ system, summary }) => {

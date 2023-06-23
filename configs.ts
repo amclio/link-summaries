@@ -1,6 +1,8 @@
+import type { Topic } from './src/parsers/types'
+
 interface UrlWithTopic {
   startCount: number
-  topic: string
+  topic: Topic
   urls: string[]
 }
 
