@@ -9,21 +9,33 @@ interface ParserReturn extends CommonParserReturn {
   system: 'yonhap'
 }
 
-export async function parsingYonhap({
-  page,
-  url,
-}: ParserParam): Promise<ParserReturn> {
-  await page.goto(url)
+async function getSummary({ page }: { page: Page }) {
+  const ifExists = await page.evaluate(() =>
+    document.querySelector('.story-summary')
+  )
+
+  if (!ifExists) return null
 
   const summaryBlockElements = await page.waitForSelector('.story-summary')
 
   if (!summaryBlockElements) {
-    throw new Error(`Yonhap summary block is not available for the url ${url}`)
+    throw new Error(`Yonhap summary block is not available`)
   }
 
   const summaryList = await summaryBlockElements.evaluate((el) =>
     Array.from(el.querySelectorAll('p')).map((queried) => queried.textContent)
   )
 
-  return { summary: summaryList.join(' '), system: 'yonhap' }
+  return summaryList.join(' ')
+}
+
+export async function parsingYonhap({
+  page,
+  url,
+}: ParserParam): Promise<ParserReturn> {
+  await page.goto(url)
+
+  const summary = await getSummary({ page })
+
+  return { summary, system: 'yonhap' }
 }
