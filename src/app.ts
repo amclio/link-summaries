@@ -18,7 +18,7 @@ import { parsingNaver } from './parsers/naver.js'
 import { parsingYonhap } from './parsers/yonhap.js'
 import { removeComments } from './utils/article.js'
 
-const SKIP_IF_FILE_EXISTS = false
+const SKIP_IF_FILE_EXISTS = true
 
 interface ParserParam {
   page: Page
@@ -106,6 +106,7 @@ async function launch() {
   const instance = new PuppeteerInstance()
   const browser = await instance.createBrowser()
   const urlCount = metadata.reduce((prev, curr) => prev + curr.urls.length, 0)
+  console.log('Total articles: ', urlCount)
 
   setInterval(function () {
     progress.pulse()
