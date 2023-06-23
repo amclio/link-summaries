@@ -7,6 +7,7 @@ export class PuppeteerInstance {
 
   async createBrowser() {
     const browser = await puppeteer.launch({ headless: 'new' })
+    // const browser = await puppeteer.launch({ headless: false })
     this.browser = browser
 
     return browser

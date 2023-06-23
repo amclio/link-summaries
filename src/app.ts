@@ -1,6 +1,7 @@
 import type { Page } from 'puppeteer'
 
 import { writeFile } from 'fs/promises'
+import Gauge from 'gauge'
 import PQueue from 'p-queue'
 
 import { metadata } from '../configs.js'
@@ -19,16 +20,8 @@ interface ParserParam {
 
 const SAVING_PATH = 'articles'
 
+const progress = new Gauge()
 const queue = new PQueue({ concurrency: 1 })
-
-let count = 0
-queue.on('active', () => {
-  console.log(
-    `Working on item #${++count}.  Size: ${queue.size}  Pending: ${
-      queue.pending
-    }`
-  )
-})
 
 async function parsingDaum({ title, page }: { page: Page; title: string }) {
   const daumUrl = await searchDaumArticle({ title, page })
@@ -89,6 +82,18 @@ async function parseAndSave(
 async function launch() {
   const instance = new PuppeteerInstance()
   const browser = await instance.createBrowser()
+  const urlCount = metadata.reduce((prev, curr) => prev + curr.urls.length, 0)
+
+  setInterval(function () {
+    progress.pulse()
+  }, 110)
+
+  queue.on('active', () => {
+    progress.show(
+      `Parsing contents ${urlCount - queue.size} of ${urlCount}...`,
+      (urlCount - queue.size) / urlCount
+    )
+  })
 
   metadata.forEach(({ startCount, topic, urls }) => {
     const funcs = urls.map((url, idx) => async () => {
@@ -101,6 +106,11 @@ async function launch() {
 
     queue.addAll(funcs)
   })
+
+  await queue.onEmpty()
+  console.log('Done! Exiting...')
+
+  process.exit(0)
 }
 
 launch()
