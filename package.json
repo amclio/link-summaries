@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx src/app.ts"
+    "dev": "tsx src/app.ts",
+    "statics": "tsx src/get-statics.ts"
   },
   "devDependencies": {
     "@types/async-retry": "^1.4.5",
